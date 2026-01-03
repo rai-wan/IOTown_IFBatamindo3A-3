@@ -11,7 +11,6 @@ export default function ParkingBlockly() {
   const [verifyMessage, setVerifyMessage] = useState("");
   const [verifyOk, setVerifyOk] = useState(false);
 
-  // TOOLBOX
   const toolbox = {
     kind: "flyoutToolbox",
     contents: [
@@ -26,274 +25,203 @@ export default function ParkingBlockly() {
   };
 
   useEffect(() => {
-    // --------------------------------------------------------------------
-    // BLOCK 1 : SETUP
-    // --------------------------------------------------------------------
     Blockly.Blocks["setup_block"] = {
-      init: function () {
-        this.appendDummyInput().appendField("Program Utama (Parkiran)");
-        this.appendStatementInput("DO")
-          .setCheck(null)
-          .appendField("jalankan blok-blok berikut:");
+      init() {
+        this.appendDummyInput().appendField("Program Parkir IoTown");
+        this.appendStatementInput("DO").appendField("jalankan blok:");
         this.setColour(210);
       },
     };
 
     javascriptGenerator.forBlock["setup_block"] = function (block) {
-      function collectBlocks(statementBlock) {
-        const list = [];
-        let b = statementBlock;
+      function collect(b) {
+        const arr = [];
         while (b) {
-          list.push(b);
-          b =
-            b.nextConnection && b.nextConnection.targetBlock
-              ? b.nextConnection.targetBlock()
-              : null;
+          arr.push(b);
+          b = b.nextConnection?.targetBlock() || null;
         }
-        return list;
+        return arr;
       }
 
       const first = block.getInputTargetBlock("DO");
-      const children = first ? collectBlocks(first) : [];
+      const children = first ? collect(first) : [];
 
-      let TRIG = "5"; // D1
-      let ECHO = "4"; // D2
-      let LED = "13"; // D7
-      let BUZZ = "12"; // D6
+      let TRIG = "5",
+        ECHO = "4",
+        LED = "13",
+        BUZ = "12";
 
-      for (const b of children) {
+      children.forEach((b) => {
         if (b.type === "ultra_init") {
           TRIG = b.getFieldValue("TRIG");
           ECHO = b.getFieldValue("ECHO");
         }
         if (b.type === "led_init") LED = b.getFieldValue("LED_PIN");
-        if (b.type === "buzzer_init") BUZZ = b.getFieldValue("BUZ_PIN");
-      }
+        if (b.type === "buzzer_init") BUZ = b.getFieldValue("BUZ_PIN");
+      });
 
-      const code = `// ----- PIN DEFINISI (AMAN UNTUK ESP8266) -----
-#define trigPin ${TRIG}
+      return `#define trigPin ${TRIG}
 #define echoPin ${ECHO}
 #define ledPin ${LED}
-#define buzzerPin ${BUZZ}
+#define buzzerPin ${BUZ}
+long duration; float distance;
 
-// ----- VARIABEL -----
-long duration;
-float distance;
-
-void setup() {
-  Serial.begin(115200);
-
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  pinMode(ledPin, OUTPUT);
-  pinMode(buzzerPin, OUTPUT);
-
-  digitalWrite(ledPin, LOW);
-  noTone(buzzerPin);
-
-  Serial.println("SMART PARKIR START");
+void setup(){
+ Serial.begin(115200);
+ pinMode(trigPin,OUTPUT);
+ pinMode(echoPin,INPUT);
+ pinMode(ledPin,OUTPUT);
+ pinMode(buzzerPin,OUTPUT);
+ digitalWrite(ledPin,LOW);
+ noTone(buzzerPin);
 }
-
-void loop() {
-  // ----- TRIGGER HC-SR04 -----
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  // ----- BACA ECHO -----
-  duration = pulseIn(echoPin, HIGH, 30000); // timeout 30ms
-
-  if (duration == 0) {
-    Serial.println("No echo");
-    distance = -1;
-  } else {
-    distance = duration * 0.034 / 2.0; // konversi jadi cm
-    Serial.print("Jarak: ");
-    Serial.print(distance);
-    Serial.println(" cm");
-  }
-
-  // ----- LOGIKA PARKIR -----
-  if (distance > 0 && distance <= 15) {
-    digitalWrite(ledPin, HIGH);
-    tone(buzzerPin, 2000);
-  } else {
-    digitalWrite(ledPin, LOW);
-    noTone(buzzerPin);
-  }
-
-  delay(120);
+void loop(){
+ digitalWrite(trigPin,LOW); delayMicroseconds(2);
+ digitalWrite(trigPin,HIGH); delayMicroseconds(10);
+ digitalWrite(trigPin,LOW);
+ duration=pulseIn(echoPin,HIGH,30000);
+ if(duration>0) distance=duration*0.034/2;
+ if(distance>0 && distance<=15){
+   digitalWrite(ledPin,HIGH); tone(buzzerPin,2000);
+ }else{
+   digitalWrite(ledPin,LOW); noTone(buzzerPin);
+ }
+ delay(120);
 }
 `;
-      return code;
     };
 
-    // --------------------------------------------------------------------
-    // BLOCK 2 : ULTRASONIC INIT
-    // --------------------------------------------------------------------
+    const empty = () => "";
     Blockly.Blocks["ultra_init"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("HC-SR04 trig")
+          .appendField("HC-SR04 TRIG")
           .appendField(
             new Blockly.FieldDropdown([
-              ["5 (D1)", "5"],
-              ["4 (D2)", "4"],
-              ["14 (D5)", "14"],
+              ["D1", "5"],
+              ["D2", "4"],
             ]),
             "TRIG"
           )
-          .appendField("echo")
+          .appendField("ECHO")
           .appendField(
             new Blockly.FieldDropdown([
-              ["4 (D2)", "4"],
-              ["5 (D1)", "5"],
-              ["12 (D6)", "12"],
+              ["D2", "4"],
+              ["D1", "5"],
             ]),
             "ECHO"
           );
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(45);
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(40);
       },
     };
-    javascriptGenerator.forBlock["ultra_init"] = () => "";
+    javascriptGenerator.forBlock["ultra_init"] = empty;
 
-    // --------------------------------------------------------------------
-    // BLOCK 3 : LED INIT
-    // --------------------------------------------------------------------
     Blockly.Blocks["led_init"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("LED pada pin")
+          .appendField("LED pin")
           .appendField(
             new Blockly.FieldDropdown([
-              ["13 (D7)", "13"],
-              ["12 (D6)", "12"],
-              ["14 (D5)", "14"],
+              ["D7", "13"],
+              ["D6", "12"],
             ]),
             "LED_PIN"
           );
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
         this.setColour(60);
       },
     };
-    javascriptGenerator.forBlock["led_init"] = () => "";
+    javascriptGenerator.forBlock["led_init"] = empty;
 
-    // --------------------------------------------------------------------
-    // BLOCK 4 : BUZZER INIT
-    // --------------------------------------------------------------------
     Blockly.Blocks["buzzer_init"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("Buzzer pada pin")
+          .appendField("Buzzer pin")
           .appendField(
             new Blockly.FieldDropdown([
-              ["12 (D6)", "12"],
-              ["13 (D7)", "13"],
+              ["D6", "12"],
+              ["D7", "13"],
             ]),
             "BUZ_PIN"
           );
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
         this.setColour(0);
       },
     };
-    javascriptGenerator.forBlock["buzzer_init"] = () => "";
+    javascriptGenerator.forBlock["buzzer_init"] = empty;
 
-    // --------------------------------------------------------------------
-    // BLOCK 5 : LOGIC
-    // --------------------------------------------------------------------
     Blockly.Blocks["logic_block"] = {
-      init: function () {
+      init() {
         this.appendDummyInput().appendField(
-          "Jika jarak ≤ 15cm → LED ON + Buzzer ON"
+          "Jika jarak ≤ 15cm → LED + Buzzer ON"
         );
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
         this.setColour(300);
       },
     };
-    javascriptGenerator.forBlock["logic_block"] = () => "";
+    javascriptGenerator.forBlock["logic_block"] = empty;
 
-    // --------------------------------------------------------------------
-    // BLOCK 6 : DISTANCE READ
-    // --------------------------------------------------------------------
     Blockly.Blocks["distance_block"] = {
-      init: function () {
+      init() {
         this.appendDummyInput().appendField("Baca jarak ultrasonic");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
         this.setColour(180);
       },
     };
-    javascriptGenerator.forBlock["distance_block"] = () => "";
+    javascriptGenerator.forBlock["distance_block"] = empty;
 
-    // --------------------------------------------------------------------
-    // BLOCK 7 : DELAY
-    // --------------------------------------------------------------------
     Blockly.Blocks["delay_block"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("Tunggu")
+          .appendField("Delay")
           .appendField(
             new Blockly.FieldDropdown([
               ["120 ms", "120"],
               ["500 ms", "500"],
-              ["1000 ms", "1000"],
             ]),
-            "DELAY_TIME"
+            "DELAY"
           );
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
         this.setColour(160);
       },
     };
-    javascriptGenerator.forBlock["delay_block"] = () => "";
+    javascriptGenerator.forBlock["delay_block"] = empty;
 
-    // --------------------------------------------------------------------
-    // INJECT WORKSPACE
-    // --------------------------------------------------------------------
-    const workspace = Blockly.inject(blocklyDiv.current, {
+    const ws = Blockly.inject(blocklyDiv.current, {
       toolbox,
-      renderer: "geras",
-      scrollbars: true,
       trashcan: true,
+      scrollbars: true,
     });
-    workspaceRef.current = workspace;
-
-    return () => workspace?.dispose();
+    workspaceRef.current = ws;
+    return () => ws.dispose();
   }, []);
 
-  // --------------------------------------------------------------------
-  // VERIFICATION
-  // --------------------------------------------------------------------
-  function collectOrderedChildTypes() {
-    if (!workspaceRef.current) return [];
-    const top = workspaceRef.current.getTopBlocks(true);
-
+  const collectChildTypes = () => {
+    const ws = workspaceRef.current;
+    if (!ws) return [];
+    const top = ws.getTopBlocks(true);
     for (const t of top) {
       if (t.type === "setup_block") {
-        const first = t.getInputTargetBlock("DO");
         const list = [];
-        let b = first;
+        let b = t.getInputTargetBlock("DO");
         while (b) {
           list.push(b.type);
-          b =
-            b.nextConnection && b.nextConnection.targetBlock
-              ? b.nextConnection.targetBlock()
-              : null;
+          b = b.nextConnection?.targetBlock() || null;
         }
         return list;
       }
     }
     return [];
-  }
+  };
 
-  function verifyArrangement() {
+  const verify = () => {
     const required = [
       "ultra_init",
       "led_init",
@@ -302,146 +230,88 @@ void loop() {
       "distance_block",
       "delay_block",
     ];
+    const found = collectChildTypes();
 
-    const found = collectOrderedChildTypes();
-
-    if (found.length === 0) {
-      setVerifyOk(false);
-      setVerifyMessage(
-        "❌ Tidak ada blok Program Utama atau blok di dalamnya kosong."
-      );
-      return;
-    }
-
-    let mismatch = [];
-    for (let i = 0; i < required.length; i++) {
-      if (found[i] !== required[i]) {
-        mismatch.push({
-          expected: required[i],
-          got: found[i] || "(kosong)",
-        });
-      }
-    }
-
-    if (mismatch.length === 0 && found.length === required.length) {
+    if (found.join() === required.join()) {
       setVerifyOk(true);
-      setVerifyMessage("✔ Susunan benar! Kode siap di-download.");
+      setVerifyMessage("✔ Susunan BENAR. Kode siap di-download.");
     } else {
-      let msg = "❌ Susunan salah!\n\nUrutan benar:\n";
-      required.forEach((b, i) => (msg += `${i + 1}. ${b}\n`));
-
-      msg += "\nUrutan kamu:\n";
-      found.forEach((f, i) => (msg += `${i + 1}. ${f}\n`));
-
       setVerifyOk(false);
-      setVerifyMessage(msg);
+      setVerifyMessage("❌ Susunan SALAH! Urutan harus:\n" + required.join(" → "));
     }
-  }
-
-  // --------------------------------------------------------------------
-  // GENERATE CODE
-  // --------------------------------------------------------------------
-  const generateCode = () => {
-    if (!workspaceRef.current) return;
-    const top = workspaceRef.current.getTopBlocks(true);
-
-    let code = "";
-    for (const t of top) {
-      if (t.type === "setup_block") {
-        code = javascriptGenerator.blockToCode(t) || "";
-      }
-    }
-    setGeneratedCode(code);
   };
 
-  // --------------------------------------------------------------------
-  // DOWNLOAD .INO
-  // --------------------------------------------------------------------
-  const downloadCode = () => {
-    if (!generatedCode || !verifyOk) return;
+  const generate = () => {
+    verify();
+    const ws = workspaceRef.current;
+    if (!ws) return;
+    ws.getTopBlocks(true).forEach((b) => {
+      if (b.type === "setup_block") {
+        setGeneratedCode(javascriptGenerator.blockToCode(b));
+      }
+    });
+  };
+
+  const download = () => {
+    if (!verifyOk) return;
     const blob = new Blob([generatedCode], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
+    a.href = URL.createObjectURL(blob);
     a.download = "smart_parkir.ino";
     a.click();
-    URL.revokeObjectURL(url);
   };
 
-  // --------------------------------------------------------------------
-  // RENDER PAGE
-  // --------------------------------------------------------------------
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4 text-blue-600">
-        🚗 IoTown Blockly — Smart Parkiran
-      </h1>
+    return (
+    <div className="h-screen flex flex-col overflow-hidden">
+      {/* HEADER */}
+      <div className="p-3 bg-white shadow">
+        <h1 className="font-bold text-blue-600 text-lg">
+          🚗 IoTown Blockly — Smart Parkir
+        </h1>
 
-      <div className="mb-3 text-sm text-gray-700">
-        <p>Letakkan 1 blok <b>Program Utama</b> lalu isi dengan 6 blok:</p>
+        {/* TOMBOL */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={verify}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
+          >
+            Verifikasi
+          </button>
 
-        <ol className="list-decimal ml-5 mt-2">
-          <li>HC-SR04 init</li>
-          <li>LED init</li>
-          <li>Buzzer init</li>
-          <li>Logika parkir</li>
-          <li>Baca jarak</li>
-          <li>Delay</li>
-        </ol>
+          <button
+            onClick={generate}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+          >
+            Generate
+          </button>
+
+          <button
+            onClick={download}
+            disabled={!verifyOk}
+            className={`px-3 py-1 rounded text-sm text-white ${
+              verifyOk ? "bg-green-500 hover:bg-green-600" : "bg-gray-400"
+            }`}
+          >
+            Download
+          </button>
+        </div>
+
+        {/* PESAN VERIFIKASI */}
+        <div className="text-sm mt-2 whitespace-pre text-gray-700">
+          {verifyMessage}
+        </div>
       </div>
 
-      <div className="flex gap-3 mb-4">
-        <button
-          onClick={() => {
-            generateCode();
-            verifyArrangement();
-          }}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          ⚙️ Generate & Verifikasi
-        </button>
-
-        <button
-          onClick={downloadCode}
-          disabled={!generatedCode || !verifyOk}
-          className={`${
-            generatedCode && verifyOk
-              ? "bg-green-500 hover:bg-green-600"
-              : "bg-gray-400 cursor-not-allowed"
-          } text-white px-4 py-2 rounded`}
-        >
-          💾 Download .ino
-        </button>
-
-        <button
-          onClick={verifyArrangement}
-          className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-        >
-          🔍 Verifikasi Susunan
-        </button>
-      </div>
-
-      <div
-        ref={blocklyDiv}
-        style={{ height: "520px", width: "100%", background: "#f5f5f5" }}
-        className="rounded-lg shadow mb-4"
-      ></div>
-
-      <h2 className="text-lg font-semibold mb-2">🧠 Hasil Kode:</h2>
-      <textarea
-        className="w-full p-3 border rounded bg-gray-50 font-mono text-sm"
-        rows="16"
-        value={generatedCode}
-        readOnly
-      />
-
-      <div
-        className={`mt-4 p-3 rounded ${
-          verifyOk ? "bg-green-50" : "bg-red-50"
-        }`}
-      >
-        <pre className="whitespace-pre-wrap text-sm m-0">{verifyMessage}</pre>
+      {/* BODY */}
+      <div className="flex-1 grid grid-cols-2 gap-2 p-2">
+        <div ref={blocklyDiv} className="bg-gray-100 rounded shadow h-full"></div>
+        <textarea
+          className="h-full p-3 border rounded bg-gray-50 font-mono text-xs"
+          value={generatedCode}
+          readOnly
+        />
       </div>
     </div>
   );
+
 }

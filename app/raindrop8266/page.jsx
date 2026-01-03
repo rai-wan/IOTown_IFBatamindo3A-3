@@ -35,15 +35,9 @@ export default function RaindropBlockly() {
     javascriptGenerator.forBlock["setup_block"] = (block) => {
       const blocks = [];
       let b = block.getInputTargetBlock("DO");
-      while (b) {
-        blocks.push(b);
-        b = b.getNextBlock();
-      }
+      while (b) { blocks.push(b); b = b.getNextBlock(); }
 
-      let servoPin = "D1";
-      let sensorPin = "A0";
-      let threshold = "618";
-
+      let servoPin="D1", sensorPin="A0", threshold="618";
       blocks.forEach((b) => {
         if (b.type === "servo_init") servoPin = b.getFieldValue("PIN_SERVO");
         if (b.type === "sensor_init") sensorPin = b.getFieldValue("PIN_SENSOR");
@@ -64,10 +58,8 @@ void setup() {
 void loop() {
   int nilai = analogRead(SENSOR_PIN);
   Serial.println(nilai);
-
   if (nilai < THRESH) jemuran.write(160);
   else jemuran.write(30);
-
   delay(500);
 }`;
     };
@@ -86,7 +78,7 @@ void loop() {
 
     Blockly.Blocks["sensor_init"] = {
       init() {
-        this.appendDummyInput().appendField("Sensor hujan di A0");
+        this.appendDummyInput().appendField("Sensor hujan di");
         this.appendDummyInput().appendField(new Blockly.FieldDropdown([["A0","A0"]]),"PIN_SENSOR");
         this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(45);
       },
@@ -112,8 +104,7 @@ void loop() {
   function collectOrderedChildTypes() {
     const setup = workspaceRef.current.getTopBlocks(true).find(b=>b.type==="setup_block");
     if(!setup) return [];
-    const list=[];
-    let b=setup.getInputTargetBlock("DO");
+    const list=[]; let b=setup.getInputTargetBlock("DO");
     while(b){ list.push(b.type); b=b.getNextBlock(); }
     return list;
   }
@@ -121,7 +112,6 @@ void loop() {
   function verifyArrangement(){
     const required=["servo_init","sensor_init","threshold_block","logic_block","delay_block"];
     const found=collectOrderedChildTypes();
-
     if(found.join()===required.join()){
       setVerifyOk(true);
       setVerifyMessage("✅ Susunan benar! Kode siap di-download.");
@@ -131,9 +121,7 @@ void loop() {
     }
   }
 
-  const generateCode = () => {
-    verifyArrangement();
-    if(!verifyOk) return;
+  const generateCode = () => { verifyArrangement(); if(!verifyOk) return;
     const setup=workspaceRef.current.getTopBlocks(true).find(b=>b.type==="setup_block");
     setGeneratedCode(javascriptGenerator.blockToCode(setup));
   };
@@ -148,18 +136,24 @@ void loop() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-blue-600 mb-4">💧 Blockly Jemuran ESP8266</h1>
-
-      <div className="flex gap-3 mb-3">
+    <div className="h-screen flex flex-col">
+      <div className="p-4 bg-white shadow flex gap-3">
         <button onClick={generateCode} className="bg-blue-500 text-white px-4 py-2 rounded">⚙️ Generate</button>
         <button onClick={verifyArrangement} className="bg-yellow-500 text-white px-4 py-2 rounded">🔍 Verifikasi</button>
         <button onClick={downloadCode} disabled={!verifyOk} className="bg-green-500 text-white px-4 py-2 rounded">💾 Download</button>
+        <span className="ml-4 whitespace-pre text-sm">{verifyMessage}</span>
       </div>
 
-      <div ref={blocklyDiv} style={{height:500}} className="bg-gray-100 mb-4 rounded"/>
-      <textarea value={generatedCode} readOnly className="w-full h-48 border p-2"/>
-      <pre className="mt-2">{verifyMessage}</pre>
+      <div className="flex flex-1 overflow-hidden">
+        {/* WORKSPACE */}
+        <div ref={blocklyDiv} className="w-1/2 bg-gray-100"/>
+
+        {/* CODE PANEL */}
+        <div className="w-1/2 border-l resize-x overflow-auto p-3">
+          <div className="font-bold mb-2">📄 Kode Arduino</div>
+          <textarea value={generatedCode} readOnly className="w-full h-full border rounded p-2 font-mono"/>
+        </div>
+      </div>
     </div>
   );
 }

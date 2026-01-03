@@ -8,233 +8,154 @@ export default function ServoBlockly() {
   const blocklyDiv = useRef(null);
   const workspaceRef = useRef(null);
   const [generatedCode, setGeneratedCode] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [verifyMessage, setVerifyMessage] = useState("");
+  const [verifyOk, setVerifyOk] = useState(false);
 
-  // ============================================
-  // TOOLBOX SERVO
-  // ============================================
   const toolbox = {
     kind: "flyoutToolbox",
     contents: [
       { kind: "block", type: "servo_setup" },
+      { kind: "block", type: "servo_wire_brown" },
+      { kind: "block", type: "servo_wire_red" },
+      { kind: "block", type: "servo_wire_orange" },
       { kind: "block", type: "servo_move" },
       { kind: "block", type: "delay_block" },
     ],
   };
 
-  // ============================================
-  // INITIALIZE BLOCKLY
-  // ============================================
   useEffect(() => {
-    // -----------------------------
-    // BLOK 1 — SETUP SERVO
-    // -----------------------------
+
     Blockly.Blocks["servo_setup"] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("Gunakan Servo di pin")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["9", "9"],
-              ["5", "5"],
-              ["6", "6"],
-              ["10", "10"],
-            ]),
-            "PIN_SERVO"
-          );
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(200);
+      init() {
+        this.appendDummyInput().appendField("Program Servo SG90");
+        this.appendStatementInput("DO").appendField("jalankan blok:");
+        this.setColour(210);
       },
     };
 
-    javascriptGenerator.forBlock["servo_setup"] = function (block) {
-      const pin = block.getFieldValue("PIN_SERVO");
-      return `
-Servo servo1;
-servo1.attach(${pin});
+    Blockly.Blocks["servo_wire_brown"] = {
+      init() {
+        this.appendDummyInput().appendField("🟤 Kabel COKLAT → GND");
+        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(60);
+      }
+    };
+
+    Blockly.Blocks["servo_wire_red"] = {
+      init() {
+        this.appendDummyInput().appendField("🔴 Kabel MERAH → 5V / 3V");
+        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(0);
+      }
+    };
+
+    Blockly.Blocks["servo_wire_orange"] = {
+      init() {
+        this.appendDummyInput()
+          .appendField("🟠 Kabel ORANGE ke pin")
+          .appendField(new Blockly.FieldDropdown([
+            ["D0","D0"],["D1","D1"],["D2","D2"],["D3","D3"],
+            ["D4","D4"],["D5","D5"],["D6","D6"],["D7","D7"],["D8","D8"]
+          ]),"PIN");
+        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(25);
+      }
+    };
+
+    Blockly.Blocks["servo_move"] = {
+      init() {
+        this.appendDummyInput()
+          .appendField("Putar servo ke")
+          .appendField(new Blockly.FieldDropdown([
+            ["0°","0"],["45°","45"],["90°","90"],["135°","135"],["180°","180"]
+          ]),"ANGLE");
+        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(120);
+      }
+    };
+
+    Blockly.Blocks["delay_block"] = {
+      init() {
+        this.appendDummyInput()
+          .appendField("Tunggu")
+          .appendField(new Blockly.FieldDropdown([
+            ["500 ms","500"],["1000 ms","1000"],["2000 ms","2000"]
+          ]),"TIME");
+        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160);
+      }
+    };
+
+    javascriptGenerator.forBlock["servo_setup"] = block => {
+      let pin = "D1";
+      let moves = "";
+
+      let b = block.getInputTargetBlock("DO");
+      while (b) {
+        if (b.type === "servo_wire_orange") pin = b.getFieldValue("PIN");
+        if (b.type === "servo_move") moves += `  servo.write(${b.getFieldValue("ANGLE")});\n`;
+        if (b.type === "delay_block") moves += `  delay(${b.getFieldValue("TIME")});\n`;
+        b = b.getNextBlock();
+      }
+
+      return `#include <Servo.h>
+Servo servo;
+
+void setup(){
+  servo.attach(${pin});
+}
+
+void loop(){
+${moves}
+}
 `;
     };
 
-    // -----------------------------
-    // BLOK 2 — MOVE SERVO ANGLE
-    // -----------------------------
-    Blockly.Blocks["servo_move"] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("Putar servo ke")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["0°", "0"],
-              ["45°", "45"],
-              ["90°", "90"],
-              ["135°", "135"],
-              ["180°", "180"],
-            ]),
-            "ANGLE"
-          );
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(30);
-      },
-    };
-
-    javascriptGenerator.forBlock["servo_move"] = function (block) {
-      const angle = block.getFieldValue("ANGLE");
-      return `servo1.write(${angle});\n`;
-    };
-
-    // -----------------------------
-    // BLOK 3 — DELAY
-    // -----------------------------
-    Blockly.Blocks["delay_block"] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("Tunggu")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["200 ms", "200"],
-              ["500 ms", "500"],
-              ["1000 ms", "1000"],
-            ]),
-            "DELAY_TIME"
-          );
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(120);
-      },
-    };
-
-    javascriptGenerator.forBlock["delay_block"] = function (block) {
-      const time = block.getFieldValue("DELAY_TIME");
-      return `delay(${time});\n`;
-    };
-
-    // -----------------------------
-    // INIT WORKSPACE
-    // -----------------------------
-    const workspace = Blockly.inject(blocklyDiv.current, {
-      toolbox,
-      trashcan: true,
-    });
-
-    workspaceRef.current = workspace;
-
-    return () => workspace.dispose();
+    const ws = Blockly.inject(blocklyDiv.current, { toolbox });
+    workspaceRef.current = ws;
+    return () => ws.dispose();
   }, []);
 
-  // ============================================
-  // VALIDASI BLOCK
-  // ============================================
-  const validateWorkspace = () => {
-    const workspace = workspaceRef.current;
-    const blocks = workspace.getAllBlocks();
-
-    let hasSetup = false;
-
-    blocks.forEach((block) => {
-      if (block.type === "servo_setup") hasSetup = true;
-    });
-
-    if (!hasSetup) {
-      setErrorMessage("❌ Kamu belum menambahkan blok 'Gunakan Servo di pin'!");
-      return false;
-    }
-
-    setErrorMessage("");
-    return true;
-  };
-
-  // ============================================
-  // GENERATE CODE
-  // ============================================
-  const generateCode = () => {
-    if (!validateWorkspace()) {
-      setGeneratedCode("// Perbaiki blok yang diperlukan.");
+  const verify = () => {
+    const top = workspaceRef.current.getTopBlocks(true);
+    if (!top.find(b=>b.type==="servo_setup")){
+      setVerifyOk(false);
+      setVerifyMessage("❌ Tambahkan blok Program Servo SG90 dulu.");
       return;
     }
-
-    const code = `
-#include <Servo.h>
-
-${javascriptGenerator.workspaceToCode(workspaceRef.current)}
-
-void setup() {
-  // Setup servo sudah otomatis ditambahkan oleh blok
-}
-
-void loop() {
-  // Blok pergerakan servo dijalankan berulang
-}
-    `.trim();
-
-    setGeneratedCode(code);
+    setVerifyOk(true);
+    setVerifyMessage("✅ Susunan benar. Siap generate!");
   };
 
-  // ============================================
-  // DOWNLOAD .ino
-  // ============================================
-  const downloadCode = () => {
-    const blob = new Blob([generatedCode], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
+  const generate = () => {
+    verify();
+    if (!verifyOk) return;
+    const setup = workspaceRef.current.getTopBlocks(true).find(b=>b.type==="servo_setup");
+    setGeneratedCode(javascriptGenerator.blockToCode(setup));
+  };
+
+  const download = () => {
+    const blob = new Blob([generatedCode]);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "servo_motor.ino";
+    a.href = URL.createObjectURL(blob);
+    a.download = "servo_sg90_esp8266.ino";
     a.click();
-    URL.revokeObjectURL(url);
   };
 
-  // ============================================
-  // UI PAGE
-  // ============================================
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-blue-700 mb-4">
-        🔧 IoTown Blockly — Motor Servo SG90
-      </h1>
+    <div className="h-screen flex flex-col overflow-hidden">
 
-      {/* ERROR MESSAGE */}
-      {errorMessage && (
-        <div className="mb-4 p-3 bg-red-200 border border-red-500 rounded text-red-800">
-          {errorMessage}
+      <div className="p-3 bg-white shadow">
+        <h1 className="font-bold text-blue-600 text-lg">⚙️ IoTown Blockly — Servo SG90 (ESP8266)</h1>
+
+        <div className="flex gap-2 mt-2">
+          <button onClick={verify} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm">Verifikasi</button>
+          <button onClick={generate} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">Generate</button>
+          <button onClick={download} disabled={!verifyOk} className={`px-3 py-1 rounded text-sm text-white ${verifyOk?"bg-green-500":"bg-gray-400"}`}>Download</button>
         </div>
-      )}
 
-      <div className="flex gap-3 mb-4">
-        <button
-          onClick={generateCode}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded"
-        >
-          ✔ Generate Code
-        </button>
-
-        <button
-          onClick={downloadCode}
-          disabled={!generatedCode}
-          className={`${
-            generatedCode
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-gray-400 cursor-not-allowed"
-          } text-white px-5 py-2 rounded`}
-        >
-          💾 Download .ino
-        </button>
+        <div className="text-sm mt-1">{verifyMessage}</div>
       </div>
 
-      {/* BLOCKLY WORKSPACE */}
-      <div
-        ref={blocklyDiv}
-        style={{ height: "500px", width: "100%", backgroundColor: "#f5f5f5" }}
-        className="rounded-lg shadow-md mb-4"
-      ></div>
-
-      <h2 className="text-xl font-semibold">📄 Hasil Kode:</h2>
-      <textarea
-        className="w-full p-3 border rounded bg-gray-100 font-mono text-sm"
-        rows="14"
-        value={generatedCode}
-        readOnly
-      />
+      <div className="flex-1 grid grid-cols-2 gap-2 p-2">
+        <div ref={blocklyDiv} className="bg-gray-100 rounded shadow"></div>
+        <textarea className="h-full p-3 border rounded bg-gray-50 font-mono text-xs" value={generatedCode} readOnly/>
+      </div>
     </div>
   );
 }

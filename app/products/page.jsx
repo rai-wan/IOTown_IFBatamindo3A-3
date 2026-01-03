@@ -21,9 +21,10 @@ export default function Products() {
       link: "/servo"
     },
     {
-      name: "NodeMCU ESP8266",
+      name: "buzzer",
       image: "/ESP.jpg",
-      desc: "NodeMCU adalah mikrokontroler ESP8266 dengan WiFi. Bagus untuk proyek IoT yang membutuhkan koneksi internet.",
+      desc: "bernyanyi dengan IOT yukk.",
+      link: "/buzzer"
     },
     {
       name: "PIR",

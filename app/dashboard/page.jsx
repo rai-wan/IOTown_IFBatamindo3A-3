@@ -36,7 +36,7 @@ export default function Dashboard() {
           <div className="w-full max-w-3xl aspect-video rounded-2xl overflow-hidden shadow-[0_10px_25px_rgba(0,0,0,0.2)] border-4 border-white z-10">
             <iframe
               className="w-full h-full"
-              src="https://www.youtube.com/embed/n-f8B76Hozk"
+              src="/video_home.mp4"
               title="Video Perkenalan IoTown"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

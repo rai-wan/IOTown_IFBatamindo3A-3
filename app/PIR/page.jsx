@@ -10,7 +10,6 @@ export default function PIRBlockly() {
   const [generatedCode, setGeneratedCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // === TOOLBOX ===
   const toolbox = {
     kind: "flyoutToolbox",
     contents: [
@@ -23,271 +22,118 @@ export default function PIRBlockly() {
   };
 
   useEffect(() => {
-    // --------------------------------------------
-    // BLOK 1: SETUP UTAMA
-    // --------------------------------------------
     Blockly.Blocks["setup_block"] = {
-      init: function () {
+      init() {
         this.appendDummyInput().appendField("Program Utama");
-        this.appendStatementInput("DO")
-          .setCheck(null)
-          .appendField("jalankan blok di bawah ini:");
+        this.appendStatementInput("DO").appendField("jalankan:");
         this.setColour(210);
       },
     };
 
-    javascriptGenerator.forBlock["setup_block"] = function (block) {
-      const statements = javascriptGenerator.statementToCode(block, "DO");
-      return `
+    javascriptGenerator.forBlock["setup_block"] = block =>
+      `
 int pirPin;
 int pirValue;
 
-void setup() {
-  Serial.begin(9600);
-${statements}
+void setup(){
+${javascriptGenerator.statementToCode(block, "DO")}
 }
 
-void loop() {
-  pirValue = digitalRead(pirPin);
-  Serial.println(pirValue);
-${statements}
+void loop(){
+${javascriptGenerator.statementToCode(block, "DO")}
 }
 `;
-    };
 
-    // --------------------------------------------
-    // BLOK 2: INISIALISASI PIR
-    // --------------------------------------------
     Blockly.Blocks["pir_init"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("Gunakan sensor PIR di pin")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["14", "14"],
-              ["27", "27"],
-              ["26", "26"],
-              ["25", "25"],
-            ]),
-            "PIN_PIR"
-          );
+          .appendField("Gunakan PIR di pin")
+          .appendField(new Blockly.FieldDropdown([["14","14"],["27","27"],["26","26"],["25","25"]]), "PIN");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(45);
       },
     };
 
-    javascriptGenerator.forBlock["pir_init"] = function (block) {
-      const pin = block.getFieldValue("PIN_PIR");
-      return `  pirPin = ${pin};\n  pinMode(pirPin, INPUT);\n`;
-    };
+    javascriptGenerator.forBlock["pir_init"] = b =>
+      `pinMode(${b.getFieldValue("PIN")},INPUT);\n`;
 
-    // --------------------------------------------
-    // BLOK 3: PIR READ
-    // --------------------------------------------
     Blockly.Blocks["pir_read"] = {
-      init: function () {
-        this.appendDummyInput().appendField("Baca nilai sensor PIR");
+      init() {
+        this.appendDummyInput().appendField("Baca PIR");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
-        this.setColour(270);
+        this.setColour(260);
       },
     };
 
-    javascriptGenerator.forBlock["pir_read"] = function () {
-      return `  pirValue = digitalRead(pirPin);\n  Serial.println(pirValue);\n`;
-    };
+    javascriptGenerator.forBlock["pir_read"] = () => `pirValue=digitalRead(pirPin);\n`;
 
-    // --------------------------------------------
-    // BLOK 4: PIR LOGIC
-    // --------------------------------------------
     Blockly.Blocks["pir_logic"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("Jika PIR mendeteksi gerakan → LED ON")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["2", "2"],
-              ["4", "4"],
-              ["5", "5"],
-              ["18", "18"],
-            ]),
-            "PIN_LED"
-          );
+          .appendField("Jika PIR ON nyalakan LED")
+          .appendField(new Blockly.FieldDropdown([["2","2"],["4","4"],["5","5"],["18","18"]]),"LED");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(0);
       },
     };
 
-    javascriptGenerator.forBlock["pir_logic"] = function (block) {
-      const pin = block.getFieldValue("PIN_LED");
-      return `
-  pinMode(${pin}, OUTPUT);
-  if (pirValue == 1) {
-    digitalWrite(${pin}, HIGH);
-  } else {
-    digitalWrite(${pin}, LOW);
-  }
-`;
-    };
+    javascriptGenerator.forBlock["pir_logic"] = b =>
+      `digitalWrite(${b.getFieldValue("LED")},pirValue);\n`;
 
-    // --------------------------------------------
-    // BLOK 5: DELAY
-    // --------------------------------------------
     Blockly.Blocks["delay_block"] = {
-      init: function () {
+      init() {
         this.appendDummyInput()
-          .appendField("Tunggu selama")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["200 ms", "200"],
-              ["500 ms", "500"],
-              ["1000 ms", "1000"],
-            ]),
-            "DELAY_TIME"
-          );
+          .appendField("Delay")
+          .appendField(new Blockly.FieldDropdown([["200","200"],["500","500"],["1000","1000"]]),"D");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(160);
       },
     };
 
-    javascriptGenerator.forBlock["delay_block"] = function (block) {
-      const delayTime = block.getFieldValue("DELAY_TIME");
-      return `  delay(${delayTime});\n`;
-    };
+    javascriptGenerator.forBlock["delay_block"] = b => `delay(${b.getFieldValue("D")});\n`;
 
-    // --------------------------------------------
-    // INIT WORKSPACE
-    // --------------------------------------------
-    const workspace = Blockly.inject(blocklyDiv.current, {
-      toolbox,
-      trashcan: true,
-    });
-
-    workspaceRef.current = workspace;
-
-    return () => workspace.dispose();
+    const ws = Blockly.inject(blocklyDiv.current, { toolbox, trashcan: true });
+    workspaceRef.current = ws;
+    return () => ws.dispose();
   }, []);
 
-  // =====================================================
-  // VALIDASI BLOCK
-  // =====================================================
-  const validateWorkspace = () => {
-    const workspace = workspaceRef.current;
-    const blocks = workspace.getAllBlocks();
+  const generate = () =>
+    setGeneratedCode(javascriptGenerator.workspaceToCode(workspaceRef.current));
 
-    let hasSetup = false;
-    let hasPIRInit = false;
-    let hasPIRRead = false;
-
-    // Reset highlight dulu
-    blocks.forEach((b) => b.setColour(b.originalColour || b.colour_));
-
-    blocks.forEach((block) => {
-      block.originalColour = block.colour_;
-
-      if (block.type === "setup_block") hasSetup = true;
-      if (block.type === "pir_init") hasPIRInit = true;
-      if (block.type === "pir_read") hasPIRRead = true;
-    });
-
-    if (!hasSetup || !hasPIRInit || !hasPIRRead) {
-      setErrorMessage("❌ Susunan blok belum lengkap! Periksa blok yang wajib digunakan.");
-
-      blocks.forEach((block) => {
-        if (
-          block.type === "setup_block" ||
-          block.type === "pir_init" ||
-          block.type === "pir_read"
-        ) {
-          block.setColour("#ff5555"); // merah = error
-        }
-      });
-
-      return false;
-    }
-
-    setErrorMessage("");
-    return true;
-  };
-
-  // =====================================================
-  // GENERATE CODE
-  // =====================================================
-  const generateCode = () => {
-    if (!workspaceRef.current) return;
-
-    if (!validateWorkspace()) {
-      setGeneratedCode("// Perbaiki blok yang salah sebelum generate kode.");
-      return;
-    }
-
-    const code = javascriptGenerator.workspaceToCode(workspaceRef.current);
-    setGeneratedCode(code);
-  };
-
-  const downloadCode = () => {
-    const blob = new Blob([generatedCode], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
+  const download = () => {
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "pir_sensor.ino";
+    a.href = URL.createObjectURL(new Blob([generatedCode]));
+    a.download = "pir.ino";
     a.click();
-    URL.revokeObjectURL(url);
   };
 
-  // =====================================================
-  // UI
-  // =====================================================
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4 text-purple-600">
-        👁 IoTown Blockly — Sensor PIR (Gerakan)
+    <div className="h-screen p-3 overflow-hidden">
+
+      <h1 className="text-xl font-bold text-purple-600 mb-2">
+        👁 IoTown — Parkiran Otomatis (PIR)
       </h1>
 
-      {/* ERROR MESSAGE */}
-      {errorMessage && (
-        <div className="mb-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {errorMessage}
-        </div>
-      )}
-
-      <div className="flex gap-3 mb-4">
-        <button
-          onClick={generateCode}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded"
-        >
-          ✔️ Verifikasi & Generate Code
-        </button>
-
-        <button
-          onClick={downloadCode}
-          disabled={!generatedCode}
-          className={`${
-            generatedCode
-              ? "bg-green-500 hover:bg-green-600"
-              : "bg-gray-400 cursor-not-allowed"
-          } text-white px-4 py-2 rounded`}
-        >
-          💾 Download .ino
-        </button>
+      <div className="flex gap-2 mb-2">
+        <button onClick={generate} className="bg-purple-500 text-white px-4 py-2 rounded">Generate</button>
+        <button onClick={download} className="bg-green-500 text-white px-4 py-2 rounded">Download</button>
+        <button onClick={()=>workspaceRef.current.clear()} className="bg-red-500 text-white px-4 py-2 rounded">Reset</button>
       </div>
 
-      <div
-        ref={blocklyDiv}
-        style={{ height: "500px", width: "100%", backgroundColor: "#f5f5f5" }}
-        className="rounded-lg shadow-md mb-4"
-      ></div>
+      <div className="flex h-[calc(100vh-120px)] gap-3">
 
-      <h2 className="text-lg font-semibold mb-2">🧠 Hasil Kode:</h2>
-      <textarea
-        className="w-full p-3 border rounded bg-gray-50 font-mono text-sm"
-        rows="14"
-        value={generatedCode}
-        readOnly
-      />
+        <div ref={blocklyDiv} className="w-1/2 h-full bg-gray-100 rounded shadow"/>
+
+        <textarea
+          value={generatedCode}
+          readOnly
+          className="w-1/2 h-full border rounded p-3 font-mono text-sm bg-gray-50"
+        />
+      </div>
     </div>
   );
 }

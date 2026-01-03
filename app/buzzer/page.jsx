@@ -6,236 +6,138 @@ import { javascriptGenerator } from "blockly/javascript";
 
 export default function BuzzerBlockly() {
   const blocklyDiv = useRef(null);
-  const workspaceRef = useRef(null);
-  const [generatedCode, setGeneratedCode] = useState("");
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const wsRef = useRef(null);
+  const [code, setCode] = useState("");
+  const [ok, setOk] = useState(false);
+  const [msg, setMsg] = useState("");
 
-  // ========================= TOOLBOX =========================
   const toolbox = {
     kind: "flyoutToolbox",
     contents: [
-      { kind: "block", type: "buzzer_setup" },
-      { kind: "block", type: "buzzer_on" },
-      { kind: "block", type: "delay_block" },
-      { kind: "block", type: "buzzer_off" },
+      { kind: "block", type: "bz_setup" },
+      { kind: "block", type: "bz_init" },
+      { kind: "block", type: "bz_note" },
+      { kind: "block", type: "bz_delay" },
     ],
   };
 
-  // ========================= SETUP & INIT =========================
   useEffect(() => {
-    // --- BLOK SETUP ---
-    Blockly.Blocks["buzzer_setup"] = {
-      init: function () {
+
+    // PROGRAM
+    Blockly.Blocks["bz_setup"] = {
+      init() {
+        this.appendDummyInput().appendField("🎵 Program Lagu Buzzer");
+        this.appendStatementInput("DO").appendField("isi dengan blok:");
+        this.setColour(210);
+      },
+    };
+
+    javascriptGenerator.forBlock["bz_setup"] = block => {
+      let pin="5", body="";
+      let b = block.getInputTargetBlock("DO");
+      while(b){
+        if(b.type==="bz_init") pin=b.getFieldValue("PIN");
+        if(b.type==="bz_note") body += javascriptGenerator.forBlock["bz_note"](b);
+        if(b.type==="bz_delay") body += javascriptGenerator.forBlock["bz_delay"](b);
+        b=b.getNextBlock();
+      }
+
+      return `#define BUZZER ${pin}
+void setup(){ pinMode(BUZZER,OUTPUT); }
+void loop(){
+${body}
+}`;
+    };
+
+    // INIT
+    Blockly.Blocks["bz_init"] = {
+      init(){
         this.appendDummyInput()
-          .appendField("Gunakan Buzzer di pin")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["4", "4"],
-              ["5", "5"],
-              ["12", "12"],
-              ["14", "14"],
-            ]),
-            "PIN"
-          );
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(200);
-      },
+          .appendField("Buzzer di pin")
+          .appendField(new Blockly.FieldDropdown([
+            ["D1","5"],["D2","4"],["D3","0"],["D4","2"],["D5","14"]
+          ]),"PIN");
+        this.setPreviousStatement(true); this.setNextStatement(true);
+        this.setColour(60);
+      }
     };
+    javascriptGenerator.forBlock["bz_init"] = () => "";
 
-    javascriptGenerator.forBlock["buzzer_setup"] = (block) => {
-      const pin = block.getFieldValue("PIN");
-      return `int buzzerPin = ${pin};\n  pinMode(buzzerPin, OUTPUT);\n`;
+    // NOTE
+    Blockly.Blocks["bz_note"] = {
+      init(){
+        this.appendDummyInput()
+          .appendField("Mainkan nada")
+          .appendField(new Blockly.FieldDropdown([
+            ["DO","262"],["RE","294"],["MI","330"],["FA","349"],
+            ["SOL","392"],["LA","440"],["SI","494"],["DO tinggi","523"]
+          ]),"NOTE");
+        this.setPreviousStatement(true); this.setNextStatement(true);
+        this.setColour(300);
+      }
     };
+    javascriptGenerator.forBlock["bz_note"] = b =>
+      `tone(BUZZER, ${b.getFieldValue("NOTE")});\n`;
 
-    // --- BLOK BUZZER ON ---
-    Blockly.Blocks["buzzer_on"] = {
-      init: function () {
-        this.appendDummyInput().appendField("Hidupkan Buzzer");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(20);
-      },
-    };
-
-    javascriptGenerator.forBlock["buzzer_on"] = () => {
-      return `digitalWrite(buzzerPin, HIGH);\n`;
-    };
-
-    // --- BLOK DELAY ---
-    Blockly.Blocks["delay_block"] = {
-      init: function () {
+    // DELAY
+    Blockly.Blocks["bz_delay"] = {
+      init(){
         this.appendDummyInput()
           .appendField("Tunggu")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["200 ms", "200"],
-              ["500 ms", "500"],
-              ["1000 ms", "1000"],
-            ]),
-            "TIME"
-          );
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(120);
-      },
+          .appendField(new Blockly.FieldDropdown([
+            ["200 ms","200"],["300 ms","300"],["500 ms","500"],["800 ms","800"]
+          ]),"D");
+        this.setPreviousStatement(true); this.setNextStatement(true);
+        this.setColour(160);
+      }
     };
+    javascriptGenerator.forBlock["bz_delay"] = b =>
+      `delay(${b.getFieldValue("D")}); noTone(BUZZER);\n`;
 
-    javascriptGenerator.forBlock["delay_block"] = (block) => {
-      const t = block.getFieldValue("TIME");
-      return `delay(${t});\n`;
-    };
-
-    // --- BLOK BUZZER OFF ---
-    Blockly.Blocks["buzzer_off"] = {
-      init: function () {
-        this.appendDummyInput().appendField("Matikan Buzzer");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(0);
-      },
-    };
-
-    javascriptGenerator.forBlock["buzzer_off"] = () => {
-      return `digitalWrite(buzzerPin, LOW);\n`;
-    };
-
-    // ========================= INIT WORKSPACE =========================
-    const workspace = Blockly.inject(blocklyDiv.current, {
-      toolbox,
-      trashcan: true,
-    });
-
-    // ========================= ACAK BLOK =========================
-    setTimeout(() => {
-      const blocks = workspace.getAllBlocks();
-      blocks.forEach((b) => {
-        b.moveBy(Math.random() * 200 - 100, Math.random() * 150 - 75);
-      });
-    }, 100);
-
-    workspaceRef.current = workspace;
-
-    return () => workspace.dispose();
+    wsRef.current = Blockly.inject(blocklyDiv.current,{toolbox});
   }, []);
 
-  // ========================= VALIDATION =========================
-  const validateBlocks = () => {
-    const workspace = workspaceRef.current;
-    const blocks = workspace.getTopBlocks(true);
-
-    const order = ["buzzer_setup", "buzzer_on", "delay_block", "buzzer_off"];
-
-    if (blocks.length !== order.length) {
-      setMessage({
-        type: "error",
-        text: "❌ Susunan blok masih salah! Gunakan keempat blok dalam urutan yang benar.",
-      });
-      return false;
+  function verify(){
+    const hasInit = wsRef.current.getAllBlocks().some(b=>b.type==="bz_init");
+    if(hasInit){
+      setOk(true); setMsg("✅ Siap! Kamu bebas bikin lagu apa saja 🎶");
+    } else {
+      setOk(false); setMsg("❌ Tambahkan blok 'Buzzer di pin' dulu.");
     }
+  }
 
-    for (let i = 0; i < order.length; i++) {
-      if (blocks[i].type !== order[i]) {
-        setMessage({
-          type: "error",
-          text: "❌ Urutan blok masih salah! Coba urutkan ulang: Setup → On → Delay → Off",
-        });
-        return false;
-      }
-    }
+  function generate(){
+    verify();
+    if(!ok) return;
+    const setup = wsRef.current.getTopBlocks(true).find(b=>b.type==="bz_setup");
+    setCode(javascriptGenerator.blockToCode(setup));
+  }
 
-    setMessage({
-      type: "success",
-      text: "🎉 Hebat! Susunan blok kamu sudah BENAR!",
-    });
-
-    return true;
+  const download = ()=>{
+    if(!ok) return;
+    const blob=new Blob([code]);
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="lagu_buzzer.ino";
+    a.click();
   };
 
-  // ========================= GENERATE CODE =========================
-  const generateCode = () => {
-    if (!validateBlocks()) {
-      setGeneratedCode("// Perbaiki dulu susunan blok ya 😊");
-      return;
-    }
-
-    const code = `
-void setup() {
-${javascriptGenerator.workspaceToCode(workspaceRef.current)}
-}
-
-void loop() {
-${javascriptGenerator.workspaceToCode(workspaceRef.current)}
-}
-    `.trim();
-
-    setGeneratedCode(code);
-  };
-
-  // ========================= DOWNLOAD =========================
-  const downloadCode = () => {
-    const blob = new Blob([generatedCode], { type: "text/plain" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "buzzer.ino";
-    link.click();
-  };
-
-  // ========================= PAGE UI =========================
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-purple-700 mb-4">
-        🔔 IoTown Blockly — Buzzer Sederhana
-      </h1>
-
-      {/* MESSAGE */}
-      {message.text && (
-        <div
-          className={`p-3 mb-4 rounded ${
-            message.type === "success"
-              ? "bg-green-200 text-green-800 border border-green-500"
-              : "bg-red-200 text-red-800 border border-red-500"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
-      <div className="flex gap-3 mb-4">
-        <button
-          onClick={generateCode}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
-        >
-          ✔ Verifikasi & Generate
-        </button>
-
-        <button
-          onClick={downloadCode}
-          disabled={!generatedCode}
-          className={`px-4 py-2 rounded ${
-            generatedCode
-              ? "bg-green-600 hover:bg-green-700 text-white"
-              : "bg-gray-400 text-gray-200 cursor-not-allowed"
-          }`}
-        >
-          💾 Download .ino
-        </button>
+    <div className="h-screen flex flex-col">
+      <div className="p-3 bg-white shadow flex gap-3 items-center">
+        <button onClick={generate} className="bg-blue-500 text-white px-4 py-2 rounded">⚙ Generate</button>
+        <button onClick={verify} className="bg-yellow-500 text-white px-4 py-2 rounded">🔍 Verifikasi</button>
+        <button onClick={download} className="bg-green-500 text-white px-4 py-2 rounded">💾 Download</button>
+        <span className="text-sm ml-4">{msg}</span>
       </div>
 
-      {/* BLOCKLY WORKSPACE */}
-      <div
-        ref={blocklyDiv}
-        style={{ height: "500px", width: "100%" }}
-        className="bg-gray-100 rounded shadow mb-4"
-      ></div>
-
-      <h2 className="font-semibold text-lg mb-2">📄 Hasil Kode:</h2>
-      <textarea
-        rows="14"
-        className="w-full p-3 bg-gray-50 border rounded font-mono text-sm"
-        value={generatedCode}
-        readOnly
-      ></textarea>
+      <div className="flex flex-1">
+        <div ref={blocklyDiv} className="w-1/2 bg-gray-100"/>
+        <div className="w-1/2 border-l p-2">
+          <div className="font-bold mb-1">Kode Arduino</div>
+          <textarea className="w-full h-full border rounded p-2 font-mono text-sm" value={code} readOnly/>
+        </div>
+      </div>
     </div>
   );
 }
