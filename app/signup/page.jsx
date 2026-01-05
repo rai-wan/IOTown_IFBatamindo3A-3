@@ -26,7 +26,7 @@ export default function SignUp() {
     const data = await res.json();
     if (data.success) {
       setMessage("✅ Register berhasil");
-      // Redirect atau kosongkan form jika perlu
+      setPhone(""); setEmail(""); setPassword(""); setConfirmPassword("");
     } else {
       setMessage("❌ " + (data.message || "Register gagal"));
     }
@@ -35,22 +35,31 @@ export default function SignUp() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center font-sans">
       <div className="w-full max-w-4xl flex rounded-xl overflow-hidden shadow-xl">
-        {/* Left Side */}
+
+        {/* LEFT SIDE */}
         <div className="w-1/2 bg-[#2c3e50] text-white flex flex-col justify-center items-center px-8 py-12">
-          <div className="bg-pink-400 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <span className="text-white text-xl font-bold">X</span>
+
+          {/* LOGO IOTOWN */}
+          <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center mb-4 overflow-hidden">
+            <img
+              src="/iotown_logo.png"
+              alt="IoTown Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
-          <h2 className="text-xl font-bold mb-2 text-center">Hello IoTown-ers!</h2>
+
+          <h2 className="text-xl font-bold mb-2 text-center">Join IoTown!</h2>
           <p className="text-sm text-center leading-relaxed max-w-xs">
-            IoTown is lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            Daftarkan dirimu dan mulai belajar IoT dengan Blockly & Arduino.
           </p>
           <p className="mt-auto text-xs pt-20">©2025 All rights reserved</p>
         </div>
 
-        {/* Right Side */}
+        {/* RIGHT SIDE */}
         <div className="w-1/2 bg-[#d6eaf8] flex flex-col justify-center items-center px-8 py-12">
           <div className="w-full max-w-sm">
-            <h2 className="text-2xl font-bold text-blue-900 mb-4 text-center">Welcome!</h2>
+            <h2 className="text-2xl font-bold text-blue-900 mb-4 text-center">Create Account</h2>
+
             <form className="space-y-4" onSubmit={handleRegister}>
               <input
                 type="text"
@@ -59,6 +68,7 @@ export default function SignUp() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
+
               <input
                 type="email"
                 placeholder="Email"
@@ -67,6 +77,7 @@ export default function SignUp() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+
               <input
                 type="password"
                 placeholder="Password"
@@ -75,6 +86,7 @@ export default function SignUp() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+
               <input
                 type="password"
                 placeholder="Confirm Password"
@@ -83,19 +95,27 @@ export default function SignUp() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
+
               <button
                 type="submit"
                 className="w-full bg-pink-500 text-white py-2 rounded-lg hover:bg-pink-600 transition"
               >
                 Sign Up
               </button>
-              {message && <p className="text-sm text-center text-red-600 mt-2">{message}</p>}
+
+              {message && (
+                <p className="text-sm text-center text-red-600 mt-2">{message}</p>
+              )}
             </form>
+
             <p className="mt-4 text-sm text-center text-gray-700">
               Already have an account?{" "}
               <a href="/signin" className="text-pink-500 underline">Log In</a>
             </p>
-            <p className="text-xs text-center text-gray-500 mt-6">© 2025 All rights reserved</p>
+
+            <p className="text-xs text-center text-gray-500 mt-6">
+              © 2025 All rights reserved
+            </p>
           </div>
         </div>
       </div>

@@ -13,12 +13,12 @@ export default function VideosPage() {
     {
       title: "Ultrasonic alaram parkir",
       desc: "Pekrakitan peralatan project SENSOR ultarasonic, buzzer dan LED.",
-      file: "/video_raihan.mp4",
+      file: "/video_dita.mp4",
     },
     {
       title: "Motor sevo",
       desc: "pengenalan tool IOT motor servo G90 perakitan dan pengodingan sederhana unutk mengerakkan motor servo '",
-      file: "/video_agnes.mp4",
+      file: "/video_demo.mp4",
     },
     {
       title: "Smart Rain Sensor",
